@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Field Capture — Name, Photo, GPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1410;
+    --surface: #161c18;
+    --surface-2: #1f2722;
+    --line: #2a3530;
+    --ink: #e8ede8;
+    --ink-dim: #8a9690;
+    --accent: #c4ff4d;
+    --accent-dim: #6b8a2a;
+    --danger: #ff6b5b;
+    --success: #7eddb0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter Tight', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(196,255,77,0.06) 0%, transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(126,221,176,0.04) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: 0;
+    mix-blend-mode: overlay;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .brand span { color: var(--accent); font-style: italic; }
+  .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Hero */
+  .hero {
+    margin-bottom: 56px;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    padding: 6px 12px;
+    border: 1px solid var(--accent-dim);
+    border-radius: 100px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(40px, 7vw, 64px);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .hero p {
+    font-size: 16px;
+    color: var(--ink-dim);
+    max-width: 480px;
+    line-height: 1.55;
+  }
+
+  /* Form */
+  .form-grid {
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .field {
+    background: var(--surface);
+    padding: 24px 28px;
+    position: relative;
+  }
+  .field-num {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    letter-spacing: 0.1em;
+  }
+  .field-label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    margin-bottom: 14px;
+  }
+  .field-label .req { color: var(--accent); }
+
+  input[type="text"] {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 400;
+    padding: 8px 0 12px;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  input[type="text"]:focus { border-bottom-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--ink-dim); font-style: italic; }
+
+  /* GPS panel */
+  .gps-panel {
+    background: var(--surface-2);
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .gps-row { display: flex; justify-content: space-between; gap: 12px; }
+  .gps-row .k { color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; }
+  .gps-row .v { color: var(--ink); text-align: right; }
+  .gps-row .v.empty { color: var(--ink-dim); font-style: italic; }
+  .gps-row .v.live { color: var(--accent); }
+
+  .gps-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 10px 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0c0a;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+  .btn-primary:hover { background: #d6ff66; color: #0a0c0a; }
+
+  /* Camera */
+  .camera-stage {
+    margin-top: 16px;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+    display: none;
+    position: relative;
+  }
+  .camera-stage.active { display: block; }
+  .camera-stage video,
+  .camera-stage canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .camera-stage canvas { display: none; }
+  .preview-img {
+    display: none;
+    width: 100%;
+    border-radius: 4px;
+    margin-top: 16px;
+  }
+  .preview-img.shown { display: block; }
+
+  /* Submit area */
+  .submit-row {
+    margin-top: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .submit-row .status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .submit-btn {
+    flex: 1;
+    min-width: 200px;
+    background: var(--accent);
+    color: #0a0c0a;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 600;
+    padding: 18px 24px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .submit-btn:hover:not(:disabled) {
+    background: #d6ff66;
+    transform: translateY(-1px);
+  }
+  .submit-btn:disabled {
+    background: var(--surface-2);
+    color: var(--ink-dim);
+    cursor: not-allowed;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    z-index: 100;
+    transition: transform 0.3s ease;
+    max-width: 90vw;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  /* Footnote */
+  .footnote {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    line-height: 1.8;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Reveal animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes reveal {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .d1 { animation-delay: 0.05s; }
+  .d2 { animation-delay: 0.15s; }
+  .d3 { animation-delay: 0.25s; }
+  .d4 { animation-delay: 0.35s; }
+  .d5 { animation-delay: 0.45s; }
+
+  @media (max-width: 540px) {
+    .container { padding: 32px 16px 60px; }
+    .field { padding: 20px 18px; }
+    input[type="text"] { font-size: 20px; }
+    .header { margin-bottom: 32px; }
+    .hero { margin-bottom: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header class="header reveal d1">
+    <div class="brand">field<span>·</span>log</div>
+    <div class="meta" id="utc-clock">— · —</div>
+  </header>
+
+  <section class="hero">
+    <span class="hero-tag reveal d2">// Geo-tagged capture</span>
+    <h1 class="reveal d2">Mark this <em>moment</em><br>in space and time.</h1>
+    <p class="reveal d3">Snap a photo with coordinates baked right onto it. Your name, the image, and precise GPS data — submitted in one tap.</p>
+  </section>
+
+  <form class="form-grid reveal d4" id="capture-form" autocomplete="off">
+
+    <div class="field">
+      <span class="field-num">01</span>
+      <label for="name" class="field-label">Your name <span class="req">*</span></label>
+      <input type="text" id="name" placeholder="e.g. Priya Singh" required />
+    </div>
+
+    <div class="field">
+      <span class="field-num">02</span>
+      <label class="field-label">GPS coordinates <span class="req">*</span></label>
+      <div class="gps-panel">
+        <div class="gps-row"><span class="k">Latitude</span><span class="v empty" id="lat-val">awaiting signal</span></div>
+        <div class="gps-row"><span class="k">Longitude</span><span class="v empty" id="lon-val">awaiting signal</span></div>
+        <div class="gps-row"><span class="k">Accuracy</span><span class="v empty" id="acc-val">—</span></div>
+        <div class="gps-row"><span class="k">Timestamp</span><span class="v empty" id="ts-val">—</span></div>
+      </div>
+      <div class="gps-actions">
+        <button type="button" class="btn btn-primary" id="gps-btn">⟢ Lock location</button>
+        <button type="button" class="btn" id="gps-refresh" style="display:none;">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-num">03</span>
+      <label class="field-label">Photograph <span class="req">*</span></label>
+      <div class="gps-actions" style="margin-top:0;">
+        <button type="button" class="btn btn-primary" id="cam-start">▶ Open camera</button>
+        <button type="button" class="btn" id="cam-shoot" style="display:none;">◉ Capture</button>
+        <button type="button" class="btn" id="cam-retake" style="display:none;">↻ Retake</button>
+      </div>
+      <div class="camera-stage" id="cam-stage">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+      </div>
+      <img class="preview-img" id="preview" alt="captured photo" />
+    </div>
+
+    <div class="field">
+      <span class="field-num">04</span>
+      <label class="field-label">Endpoint URL (optional)</label>
+      <input type="text" id="endpoint" placeholder="https://script.google.com/macros/s/.../exec" />
+      <p style="font-size:11px; color:var(--ink-dim); margin-top:8px; font-family:'JetBrains Mono', monospace; line-height:1.6;">
+        Leave blank to download locally. Paste a Google Apps Script Web App URL to send to a Google Sheet.
+      </p>
+    </div>
+
+  </form>
+
+  <div class="submit-row">
+    <span class="status" id="form-status">— ready —</span>
+    <button class="submit-btn" id="submit-btn" disabled>Submit entry →</button>
+  </div>
+
+  <footer class="footnote">
+    <span>// field-log v1 · powered by your browser</span>
+    <span id="device-info">—</span>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  const state = {
+    gps: null,
+    photoBlob: null,
+    photoDataUrl: null,
+    stream: null
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const toast = (msg, type) => {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(() => t.className = 'toast', 3500);
+  };
+
+  // Live UTC clock
+  function tickClock() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    $('utc-clock').textContent =
+      pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + ' UTC';
+  }
+  setInterval(tickClock, 1000); tickClock();
+
+  // Device info
+  const ua = navigator.userAgent;
+  const mobile = /Mobi|Android|iPhone/i.test(ua);
+  $('device-info').textContent = mobile ? '// mobile device detected' : '// desktop session';
+
+  // ---------- GPS ----------
+  function getGPS() {
+    if (!navigator.geolocation) {
+      toast('Geolocation not supported', 'error');
+      return;
+    }
+    $('lat-val').textContent = 'acquiring…';
+    $('lat-val').className = 'v live';
+    $('lon-val').textContent = 'acquiring…';
+    $('lon-val').className = 'v live';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
+        state.gps = { lat, lon, accuracy: acc, timestamp: new Date().toISOString() };
+        $('lat-val').textContent = lat.toFixed(6) + '°';
+        $('lat-val').className = 'v live';
+        $('lon-val').textContent = lon.toFixed(6) + '°';
+        $('lon-val').className = 'v live';
+        $('acc-val').textContent = '± ' + Math.round(acc) + ' m';
+        $('acc-val').className = 'v';
+        $('ts-val').textContent = new Date().toLocaleTimeString();
+        $('ts-val').className = 'v';
+        $('gps-refresh').style.display = 'inline-block';
+        $('gps-btn').textContent = '✓ Location locked';
+        updateSubmit();
+        toast('GPS locked · ±' + Math.round(acc) + 'm', 'success');
+      },
+      (err) => {
+        $('lat-val').textContent = 'failed';
+        $('lat-val').className = 'v empty';
+        $('lon-val').textContent = 'failed';
+        $('lon-val').className = 'v empty';
+        toast('GPS error: ' + err.message, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+  $('gps-btn').addEventListener('click', getGPS);
+  $('gps-refresh').addEventListener('click', getGPS);
+
+  // ---------- Camera ----------
+  async function startCamera() {
+    try {
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1440 } },
+        audio: false
+      });
+      $('video').srcObject = state.stream;
+      $('cam-stage').classList.add('active');
+      $('cam-start').style.display = 'none';
+      $('cam-shoot').style.display = 'inline-block';
+      $('preview').classList.remove('shown');
+    } catch (err) {
+      toast('Camera error: ' + err.message, 'error');
+    }
+  }
+
+  function stopCamera() {
+    if (state.stream) {
+      state.stream.getTracks().forEach(t => t.stop());
+      state.stream = null;
+    }
+    $('cam-stage').classList.remove('active');
+  }
+
+  function shoot() {
+    if (!state.gps) {
+      toast('Lock GPS first to stamp the photo', 'error');
+      return;
+    }
+    const video = $('video');
+    const canvas = $('canvas');
+    const w = video.videoWidth, h = video.videoHeight;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // Stamp overlay
+    const padX = w * 0.025;
+    const padBot = h * 0.025;
+    const barH = h * 0.16;
+    const barY = h - barH - padBot;
+
+    // Semi-transparent black bar
+    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+    ctx.fillRect(padX, barY, w - padX * 2, barH);
+
+    // Accent stripe
+    ctx.fillStyle = '#c4ff4d';
+    ctx.fillRect(padX, barY, 6, barH);
+
+    // Text
+    const baseSize = Math.max(14, Math.round(h * 0.022));
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'top';
+
+    const lineGap = baseSize * 1.35;
+    const textX = padX + 24;
+    let textY = barY + barH * 0.12;
+
+    // Header label
+    ctx.font = '500 ' + Math.round(baseSize * 0.75) + 'px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#c4ff4d';
+    ctx.fillText('GEO · STAMP', textX, textY);
+    textY += lineGap * 0.9;
+
+    // Coordinates
+    ctx.font = '600 ' + baseSize + 'px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    const latStr = state.gps.lat.toFixed(6) + '° ' + (state.gps.lat >= 0 ? 'N' : 'S');
+    const lonStr = state.gps.lon.toFixed(6) + '° ' + (state.gps.lon >= 0 ? 'E' : 'W');
+    ctx.fillText('LAT  ' + latStr, textX, textY);
+    textY += lineGap;
+    ctx.fillText('LON  ' + lonStr, textX, textY);
+    textY += lineGap;
+
+    // Meta line
+    ctx.font = '400 ' + Math.round(baseSize * 0.78) + 'px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#a8b3ad';
+    const d = new Date();
+    const dateStr = d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    ctx.fillText('± ' + Math.round(state.gps.accuracy) + 'm  ·  ' + dateStr, textX, textY);
+
+    // Right-side name
+    const name = $('name').value.trim();
+    if (name) {
+      ctx.font = '500 ' + Math.round(baseSize * 0.82) + 'px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'right';
+      ctx.fillText(name.toUpperCase(), w - padX - 24, barY + barH * 0.5 - baseSize * 0.5);
+      ctx.textAlign = 'left';
+    }
+
+    // Export
+    canvas.toBlob((blob) => {
+      state.photoBlob = blob;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        state.photoDataUrl = e.target.result;
+        $('preview').src = e.target.result;
+        $('preview').classList.add('shown');
+      };
+      reader.readAsDataURL(blob);
+      stopCamera();
+      $('cam-shoot').style.display = 'none';
+      $('cam-retake').style.display = 'inline-block';
+      updateSubmit();
+      toast('Photo captured', 'success');
+    }, 'image/jpeg', 0.92);
+  }
+
+  $('cam-start').addEventListener('click', startCamera);
+  $('cam-shoot').addEventListener('click', shoot);
+  $('cam-retake').addEventListener('click', () => {
+    state.photoBlob = null;
+    state.photoDataUrl = null;
+    $('preview').classList.remove('shown');
+    $('cam-retake').style.display = 'none';
+    $('cam-start').style.display = 'inline-block';
+    $('cam-start').textContent = '▶ Open camera';
+    updateSubmit();
+  });
+
+  // ---------- Submit ----------
+  function updateSubmit() {
+    const ready = $('name').value.trim() && state.gps && state.photoBlob;
+    $('submit-btn').disabled = !ready;
+    $('form-status').textContent = ready ? '— ready to submit —' : '— complete all fields —';
+  }
+  $('name').addEventListener('input', updateSubmit);
+
+  async function submitEntry() {
+    const name = $('name').value.trim();
+    const endpoint = $('endpoint').value.trim();
+
+    if (!name || !state.gps || !state.photoDataUrl) {
+      toast('Missing data', 'error');
+      return;
+    }
+
+    $('submit-btn').disabled = true;
+    $('form-status').textContent = '— transmitting —';
+
+    const payload = {
+      name: name,
+      latitude: state.gps.lat,
+      longitude: state.gps.lon,
+      accuracy: state.gps.accuracy,
+      timestamp: state.gps.timestamp,
+      mapLink: 'https://www.google.com/maps?q=' + state.gps.lat + ',' + state.gps.lon,
+      photoBase64: state.photoDataUrl
+    };
+
+    if (endpoint) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        toast('Submitted to Google Sheet', 'success');
+        $('form-status').textContent = '— submitted ✓ —';
+      } catch (err) {
+        toast('Submit failed: ' + err.message, 'error');
+        $('form-status').textContent = '— error —';
+      }
+    } else {
+      // Local download fallback
+      const a = document.createElement('a');
+      a.href = state.photoDataUrl;
+      a.download = name.replace(/\s+/g, '_') + '_geotagged.jpg';
+      a.click();
+
+      const meta = JSON.stringify(payload, (k, v) => k === 'photoBase64' ? '[image]' : v, 2);
+      const m = document.createElement('a');
+      m.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(meta);
+      m.download = name.replace(/\s+/g, '_') + '_metadata.json';
+      m.click();
+
+      toast('Photo + metadata downloaded', 'success');
+      $('form-status').textContent = '— saved locally ✓ —';
+    }
+
+    setTimeout(updateSubmit, 1500);
+  }
+  $('submit-btn').addEventListener('click', submitEntry);
+})();
+</script>
+
+</body>
+</html>

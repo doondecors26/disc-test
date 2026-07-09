@@ -315,36 +315,6 @@ input, select { font-family: var(--font); }
 </head>
 <body>
 
-<!-- ═══════════════ ALREADY SUBMITTED SCREEN ═══════════════ -->
-<div id="blockedScreen" class="screen intro-screen">
-  <div class="intro-card" style="text-align:center">
-    <div class="company-banner">
-      <div class="company-text-logo">
-        <img src="Doon_Logo.png" alt="Doon Decors & Exhibits Pvt. Ltd." onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        <div style="display:none; flex-direction:column; align-items:center;">
-          <div class="company-name">DOON</div>
-          <div class="company-sub">Decors &amp; Exhibits Pvt. Ltd.</div>
-          <div class="company-tagline">Events &bull; Exhibition &bull; Celebration</div>
-        </div>
-      </div>
-    </div>
-    <div class="logo-row">
-      <div class="logo-block" style="background:var(--d)"><span>D</span></div>
-      <div class="logo-block" style="background:var(--i)"><span>I</span></div>
-      <div class="logo-block" style="background:var(--s)"><span>S</span></div>
-      <div class="logo-block" style="background:var(--c)"><span>C</span></div>
-    </div>
-    <div style="margin:24px 0;padding:24px;background:#fff8e1;border:1px solid #ffecb3;border-radius:12px">
-      <div style="font-size:40px;margin-bottom:12px">✅</div>
-      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px">Assessment Already Completed</h2>
-      <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:6px">You have already submitted the DISC Personality Assessment. Each person can only submit once.</p>
-      <p style="font-size:14px;color:var(--text);line-height:1.6;font-weight:700">आपने पहले ही DISC व्यक्तित्व मूल्यांकन जमा कर दिया है। प्रत्येक व्यक्ति केवल एक बार जमा कर सकता है।</p>
-    </div>
-    <p id="blockedInfo" style="font-size:13px;color:var(--text3);margin-bottom:16px"></p>
-    <p style="font-size:12px;color:var(--text3)">If you believe this is an error, please contact the administrator.<br>यदि आपको लगता है कि यह एक त्रुटि है, तो कृपया व्यवस्थापक से संपर्क करें।</p>
-  </div>
-</div>
-
 <!-- ═══════════════ INTRO SCREEN ═══════════════ -->
 <div id="introScreen" class="screen intro-screen active">
   <div class="intro-card">
@@ -367,7 +337,7 @@ input, select { font-family: var(--font); }
       <div class="logo-block" style="background:var(--c)"><span>C</span></div>
     </div>
     <h1 class="intro-title">DISC Personality Assessment</h1>
-    <p class="intro-sub">30 Questions &middot; 20 Minutes &middot; Bilingual EN / HI</p>
+    <p class="intro-sub">30 Questions &middot; 30 Minutes &middot; Bilingual EN / HI</p>
 
     <div class="form-grid">
       <p style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;text-align:center">Please enter your information below</p>
@@ -422,8 +392,8 @@ input, select { font-family: var(--font); }
         <input type="checkbox" class="instr-cb" />
         <div class="instr-num">1</div>
         <div class="instr-content">
-          <p class="instr-en">Kindly use only 20 minutes to fill the DISC form.</p>
-          <p class="instr-hi">कृपया डिस्क फॉर्म को भरने के लिए केवल 20 मिनट का उपयोग करें।</p>
+          <p class="instr-en">Kindly use only 30 minutes to fill the DISC form.</p>
+          <p class="instr-hi">कृपया डिस्क फॉर्म को भरने के लिए केवल 30 मिनट का उपयोग करें।</p>
         </div>
       </label>
 
@@ -732,7 +702,7 @@ const DISC_DESC = {
   S: { en: "You are patient, reliable, and team-oriented. You value cooperation, stability, and sincerity.", hi: "आप धैर्यवान, विश्वसनीय और टीम-उन्मुख हैं। आप सहयोग और स्थिरता को महत्व देते हैं।" },
   C: { en: "You are analytical, precise, and quality-focused. You value accuracy, expertise, and competency.", hi: "आप विश्लेषणात्मक, सटीक और गुणवत्ता-केंद्रित हैं। आप सटीकता और विशेषज्ञता को महत्व देते हैं।" },
 };
-const TOTAL_TIME = 20 * 60;
+const TOTAL_TIME = 30 * 60;
 
 // ─── STATE ───
 let currentQ = 0;
@@ -933,17 +903,8 @@ async function finishQuiz() {
         headers: { "Content-Type": "text/plain" },
       });
       const data = await resp.json();
-      if (data.duplicate) {
-        // Server says already submitted
-        markAsSubmitted(payload.name, payload.phone);
-        showBlockedScreen(payload.name);
-        return;
-      }
       msg = data.success ? "Your responses have been saved to Google Sheets!" : data.message;
       ok = data.success;
-      if (data.success) {
-        markAsSubmitted(payload.name, payload.phone);
-      }
     } catch (e) {
       msg = "Could not connect to Google Sheets. Please check your script URL.";
       ok = false;
@@ -1046,35 +1007,7 @@ function checkAllRead() {
   }, 50);
 }
 
-// ─── DUPLICATE SUBMISSION PREVENTION ───
-function markAsSubmitted(name, phone) {
-  try {
-    const record = { name: name, phone: phone, time: new Date().toISOString() };
-    localStorage.setItem("disc_submitted", JSON.stringify(record));
-  } catch (e) {}
-}
 
-function getSubmittedRecord() {
-  try {
-    const data = localStorage.getItem("disc_submitted");
-    return data ? JSON.parse(data) : null;
-  } catch (e) { return null; }
-}
-
-function showBlockedScreen(name) {
-  const info = document.getElementById("blockedInfo");
-  if (name) { info.textContent = "Submitted by: " + name; }
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById("blockedScreen").classList.add("active");
-}
-
-// ─── CHECK ON PAGE LOAD ───
-(function() {
-  const record = getSubmittedRecord();
-  if (record) {
-    showBlockedScreen(record.name);
-  }
-})();
 </script>
 </body>
 </html>
